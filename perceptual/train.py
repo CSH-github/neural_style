@@ -53,6 +53,7 @@ def preprocess_img(im, size):
     return im
 
 
+# gram matrix?
 def get_gram_executor(out_shapes, weights=[1, 1, 1, 1]):
     gram_executors = []
     for i in range(len(weights)):
@@ -66,7 +67,7 @@ def get_gram_executor(out_shapes, weights=[1, 1, 1, 1]):
                                           args_grad={'gram_data': mx.nd.zeros(shape, mx.gpu())}, grad_req='write'))
     return gram_executors
 
-
+# total variation regularization
 def get_tv_grad_executor(img, ctx, tv_weight):
     nchannel = img.shape[1]
     simg = mx.sym.Variable("img")
@@ -105,7 +106,9 @@ def init_executor(batch_size, weights=[1, 1, 1, 1], style_layers=['relu1_1', 're
         if key in pretrained:
             pretrained[key].copyto(arg_dict[name])
     desc_executor = descriptor.bind(ctx=mx.gpu(), args=arg_dict, args_grad=grad_dict, grad_req='write')
+
     gram_executors = get_gram_executor(descriptor.infer_shape(data=(1, 3, size, size))[1], weights=weights)
+
     generator = symbol.generator_symbol()
     arg_shapes, output_shapes, aux_shapes = generator.infer_shape(data=(batch_size, 3, size, size))
     arg_names = generator.list_arguments()
@@ -170,6 +173,7 @@ def train_style(alpha, model_prefix, img_path, weights=[1, 4, 1, 4], tv_weight=1
                     desc_executor.outputs[j][0:1].copyto(gram_executors[j].arg_dict['gram_data'])
                     gram_executors[j].forward()
                     target_grams[j][:] += gram_executors[j].outputs[0]
+    # cast to int
     for j in range(len(target_grams)):
         target_grams[j][:] /= 1
 
